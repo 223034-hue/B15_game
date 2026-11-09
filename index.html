@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>私に嘘をつくか</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            overscroll-behavior: none;
+            background-color: #000000;
+            background-image: radial-gradient(circle at center, #111827 0%, #000000 100%);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        /* 走査線エフェクト */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        /* アニメーション */
+        .fade-in {
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .glitch-text {
+            position: relative;
+            color: #fff;
+        }
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -2px 0 red;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim 2s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -2px 0 blue;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim 2.5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(78px, 9999px, 86px, 0); }
+            20% { clip: rect(10px, 9999px, 96px, 0); }
+            40% { clip: rect(44px, 9999px, 12px, 0); }
+            60% { clip: rect(98px, 9999px, 52px, 0); }
+            80% { clip: rect(12px, 9999px, 89px, 0); }
+            100% { clip: rect(55px, 9999px, 13px, 0); }
+        }
+
+        .crt-flicker {
+            animation: flicker 0.15s infinite;
+        }
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            50% { opacity: 0.85; }
+            100% { opacity: 0.95; }
+        }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen flex items-center justify-center p-4 select-none crt-flicker">
+
+    <!-- ゲームコンテナ -->
+    <div class="relative w-full max-w-[420px] h-[750px] max-h-[90vh] bg-gray-900 rounded-lg shadow-2xl overflow-hidden border border-gray-800 flex flex-col ring-1 ring-white/10">
+        
+        <!-- 走査線オーバーレイ -->
+        <div class="scanlines absolute inset-0 z-50"></div>
+
+        <!-- ヘッダー (進行度) -->
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-gray-950 z-40">
+            <div id="progress-bar" class="h-full bg-red-600 w-0 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
+        </div>
+
+        <!-- 画像エリア -->
+        <div class="relative h-[45%] w-full shrink-0 bg-black overflow-hidden flex items-center justify-center">
+            <img src="image_7f27d3.jpg" alt="Mysterious Informant" class="w-full h-full object-cover opacity-70 sepia-[.2] contrast-125" onerror="this.src='https://placehold.co/400x300/1a1a2e/ffffff?text=Target+Lost'">
+            <!-- シネマティックなグラデーションマスク -->
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-transparent to-transparent"></div>
+        </div>
+
+        <!-- コンテンツエリア -->
+        <div class="flex-1 relative p-6 flex flex-col items-center justify-center bg-gray-900 z-30">
+            
+            <!-- スタート画面 -->
+            <div id="screen-start" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gray-900 z-10 fade-in">
+                <p class="text-red-500 text-xs font-mono tracking-[0.3em] mb-2 uppercase">Interrogation Protocol</p>
+                <h1 class="text-4xl font-bold tracking-widest mb-4 text-white glitch-text" data-text="私に嘘をつくか">私に嘘をつくか</h1>
+                <p class="text-gray-400 mb-10 text-sm leading-relaxed font-light">
+                    ターゲットの言葉を見極めろ。<br>
+                    彼が語るのは真実か、それとも欺瞞か。
+                </p>
+                <button onclick="startGame()" class="px-10 py-4 bg-red-700 hover:bg-red-600 text-white rounded-sm shadow-[0_0_15px_rgba(185,28,28,0.5)] transition-all active:scale-95 tracking-[0.2em] font-bold text-sm uppercase">
+                    尋問を開始する
+                </button>
+            </div>
+
+            <!-- ゲーム画面 -->
+            <div id="screen-game" class="hidden absolute inset-0 flex flex-col items-center justify-between p-6 text-center z-10">
+                
+                <div class="w-full mt-2 fade-in">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                        <span class="text-xs text-red-500 font-mono tracking-widest uppercase">Statement</span>
+                        <span class="text-xs text-gray-500 font-mono"><span id="question-number">1</span> / 5</span>
+                    </div>
+                    
+                    <!-- セリフテキスト -->
+                    <div class="min-h-[120px] flex items-center justify-center p-4">
+                        <p id="statement-text" class="text-xl leading-relaxed text-gray-100 font-medium tracking-wide drop-shadow-md"></p>
+                    </div>
+                </div>
+
+                <!-- 選択ボタン -->
+                <div class="w-full flex gap-3 mb-2 fade-in" style="animation-delay: 0.1s;">
+                    <button onclick="makeGuess(true)" class="flex-1 relative group overflow-hidden py-5 bg-gray-800 border border-gray-700 hover:border-red-500/50 rounded-sm transition-all active:scale-95">
+                        <div class="absolute inset-0 bg-red-500/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                        <span class="relative z-10 text-red-400 font-bold text-xl tracking-widest">嘘<span class="block text-[10px] text-red-500/70 mt-1 uppercase font-mono">Lie</span></span>
+                    </button>
+                    <button onclick="makeGuess(false)" class="flex-1 relative group overflow-hidden py-5 bg-gray-800 border border-gray-700 hover:border-blue-500/50 rounded-sm transition-all active:scale-95">
+                        <div class="absolute inset-0 bg-blue-500/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                        <span class="relative z-10 text-blue-400 font-bold text-xl tracking-widest">誠<span class="block text-[10px] text-blue-500/70 mt-1 uppercase font-mono">Truth</span></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- フィードバック画面 -->
+            <div id="screen-feedback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gray-900/95 backdrop-blur-md z-20">
+                <div class="w-full max-w-[300px] border border-gray-700 bg-gray-800/80 p-6 rounded-sm shadow-2xl fade-in">
+                    <h2 id="feedback-title" class="text-3xl font-bold mb-4 tracking-widest"></h2>
+                    <p id="feedback-desc" class="text-gray-300 mb-8 text-sm leading-relaxed text-left border-l-2 border-gray-600 pl-3"></p>
+                    <button onclick="nextQuestion()" class="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-sm transition-all active:scale-95 font-mono tracking-widest uppercase text-xs">
+                        Next Record >>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 最終結果画面 -->
+            <div id="screen-result" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gray-900 z-30 fade-in">
+                <p class="text-gray-500 text-xs font-mono tracking-[0.3em] mb-4 uppercase">Interrogation Complete</p>
+                <div class="relative w-32 h-32 rounded-full border-4 border-gray-800 flex items-center justify-center mb-6 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+                    <div class="text-5xl font-bold text-white"><span id="final-score">0</span></div>
+                    <div class="absolute bottom-4 text-xs text-gray-500 font-mono">/ 5</div>
+                </div>
+                <h2 id="result-title" class="text-2xl font-bold text-white mb-2 tracking-widest"></h2>
+                <p id="result-message" class="text-sm text-gray-400 mb-10 h-16 leading-relaxed"></p>
+                
+                <button onclick="initGame()" class="px-8 py-3 border border-gray-600 hover:bg-gray-800 text-gray-300 rounded-sm transition-all active:scale-95 tracking-widest font-mono text-xs uppercase">
+                    Restart Interrogation
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 問題データ（事実か嘘か）
+        const allQuestions = [
+            {
+                statement: "人間の脳は、痛みを直接感じることはできない。",
+                isLie: false, 
+                explanation: "誠だ。脳自体には痛覚受容体が存在しない。頭痛は脳を包む膜や血管が痛みを感じているに過ぎない。"
+            },
+            {
+                statement: "カメレオンは、周囲の景色に溶け込むために体の色を変えている。",
+                isLie: true, 
+                explanation: "嘘だ。彼らが色を変える主な理由は、温度調節や感情表現、他の個体とのコミュニケーションのためだ。"
+            },
+            {
+                statement: "飛行機のブラックボックスは、その名の通り真っ黒に塗られている。",
+                isLie: true, 
+                explanation: "嘘だ。墜落後でも発見しやすいように、実際は鮮やかなオレンジ色に塗られている。"
+            },
+            {
+                statement: "宇宙空間では、どんなに大声で叫んでも誰にも聞こえない。",
+                isLie: false, 
+                explanation: "誠だ。真空の空間には音波を伝える媒質が存在しない。完全な静寂の世界だ。"
+            },
+            {
+                statement: "ライターは、マッチよりも先に発明された。",
+                isLie: false, 
+                explanation: "誠だ。摩擦マッチが普及する数年前に、最初の実用的なライターはすでに完成していた。"
+            },
+            {
+                statement: "闘牛の牛は、マントの赤い色に激怒して突進してくる。",
+                isLie: true, 
+                explanation: "嘘だ。牛は色盲に近い。彼らが反応しているのは、マントがひらひらと動く『動き』そのものだ。"
+            },
+            {
+                statement: "人間のDNAの約50%は、バナナのDNAと一致している。",
+                isLie: false, 
+                explanation: "誠だ。生命の根本的な設計図として、我々の遺伝子の半分はあの果物と同じということだ。"
+            }
+        ];
+
+        let questions = [];
+        let currentQIndex = 0;
+        let score = 0;
+
+        // UI要素の取得
+        const screens = {
+            start: document.getElementById('screen-start'),
+            game: document.getElementById('screen-game'),
+            feedback: document.getElementById('screen-feedback'),
+            result: document.getElementById('screen-result')
+        };
+        const els = {
+            statement: document.getElementById('statement-text'),
+            qNum: document.getElementById('question-number'),
+            fbTitle: document.getElementById('feedback-title'),
+            fbDesc: document.getElementById('feedback-desc'),
+            progress: document.getElementById('progress-bar'),
+            fScore: document.getElementById('final-score'),
+            rTitle: document.getElementById('result-title'),
+            rMessage: document.getElementById('result-message')
+        };
+
+        // ユーティリティ: シャッフル
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // 画面切り替え
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            
+            const target = screens[screenName];
+            target.classList.remove('hidden');
+            
+            // アニメーション再トリガー
+            target.classList.remove('fade-in');
+            void target.offsetWidth; 
+            target.classList.add('fade-in');
+        }
+
+        // ゲーム初期化
+        function initGame() {
+            els.progress.style.width = '0%';
+            questions = shuffle([...allQuestions]).slice(0, 5);
+            currentQIndex = 0;
+            score = 0;
+            showScreen('start');
+        }
+
+        // ゲーム開始
+        function startGame() {
+            showScreen('game');
+            loadQuestion();
+        }
+
+        // 問題読み込み
+        function loadQuestion() {
+            const q = questions[currentQIndex];
+            // 一文字ずつ表示するような演出(簡易版)
+            els.statement.style.opacity = 0;
+            els.statement.innerHTML = `「${q.statement}」`;
+            els.qNum.innerText = currentQIndex + 1;
+            els.progress.style.width = `${(currentQIndex / 5) * 100}%`;
+            
+            setTimeout(() => {
+                els.statement.style.transition = "opacity 0.5s ease";
+                els.statement.style.opacity = 1;
+            }, 50);
+        }
+
+        // 回答判定
+        function makeGuess(playerGuessedLie) {
+            const q = questions[currentQIndex];
+            const isCorrect = (playerGuessedLie === q.isLie);
+
+            if (isCorrect) {
+                score++;
+                els.fbTitle.innerText = "見破ったな";
+                els.fbTitle.className = "text-3xl font-bold mb-4 tracking-widest text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]";
+            } else {
+                els.fbTitle.innerText = "騙されたな";
+                els.fbTitle.className = "text-3xl font-bold mb-4 tracking-widest text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]";
+            }
+
+            els.fbDesc.innerText = q.explanation;
+            showScreen('feedback');
+        }
+
+        // 次の問題へ
+        function nextQuestion() {
+            currentQIndex++;
+            if (currentQIndex < questions.length) {
+                showScreen('game');
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        // 結果発表
+        function showResult() {
+            els.progress.style.width = '100%';
+            els.fScore.innerText = score;
+
+            if (score === 5) {
+                els.rTitle.innerText = "S-Rank: 読心術師";
+                els.rTitle.className = "text-2xl font-bold mb-2 tracking-widest text-blue-400";
+                els.rMessage.innerText = "完璧だ。彼の心の内を完全に透視しているようだった。君のような優秀な尋問官を持てて光栄だよ。";
+            } else if (score >= 3) {
+                els.rTitle.innerText = "A-Rank: 優秀な捜査官";
+                els.rTitle.className = "text-2xl font-bold mb-2 tracking-widest text-gray-200";
+                els.rMessage.innerText = "悪くない洞察力だ。いくつかの嘘には惑わされたようだが、全体としては及第点と言えるだろう。";
+            } else {
+                els.rTitle.innerText = "C-Rank: 欺瞞の犠牲者";
+                els.rTitle.className = "text-2xl font-bold mb-2 tracking-widest text-red-500";
+                els.rMessage.innerText = "単純すぎる。そんなことではすぐに足元をすくわれるぞ。相手の目をもっとよく観察するんだ。";
+            }
+            
+            showScreen('result');
+        }
+
+        // 初期化実行
+        initGame();
+    </script>
+</body>
+</html>
